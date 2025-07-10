@@ -31,6 +31,16 @@ class WaypointController(Node):
         self.get_logger().info("Abort triggered!")
         self.send_vehicle_command(command=21)  # MAV_CMD_DO_LAND_IMMEDIATELY
         self.log_event("LAND_IMMEDIATELY")
+          #updated program for reroute command
+    def send_reroute(self, lat, lon, alt):
+        self.get_logger().info(f"Rerouting to: {lat}, {lon}, {alt}")
+        self.send_vehicle_command(
+            command=16,  # MAV_CMD_NAV_WAYPOINT
+            param5=lat,
+            param6=lon,
+            param7=alt
+        )
+        self.log_event("REROUTE", lat=lat, lon=lon, alt=alt)
 
     def send_vehicle_command(self, command, param5=0.0, param6=0.0, param7=0.0):
         msg = VehicleCommand()
@@ -46,12 +56,18 @@ class WaypointController(Node):
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
         self.cmd_pub.publish(msg)
 
+     #updated AI call to handle it 
     def ai_callback(self, msg):
         if msg.data == "abort":
             self.send_abort()
         elif msg.data == "return":
             self.send_return_to_base()
-
+        elif msg.data.startswith("reroute:"):
+            try:
+                lat, lon, alt = map(float, msg.data.split(":")[1].split(","))
+                self.send_reroute(lat, lon, alt)
+            except:
+                self.get_logger().error("Invalid reroute command")
     def log_event(self, event, lat=None, lon=None, alt=None):
         log_data = {
             "time": datetime.utcnow().isoformat() + "Z",
